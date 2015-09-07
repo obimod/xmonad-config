@@ -5,7 +5,9 @@
 import System.IO
 import System.Exit
 import XMonad
+import XMonad.Actions.WindowGo(runOrRaise)
 import XMonad.Hooks.DynamicLog
+import XMonad.Hooks.FadeInactive
 import XMonad.Hooks.ManageDocks
 import XMonad.Hooks.ManageHelpers
 import XMonad.Hooks.SetWMName
@@ -15,6 +17,7 @@ import XMonad.Layout.Spiral
 import XMonad.Layout.Tabbed
 import XMonad.Layout.ThreeColumns
 import XMonad.Util.Run(spawnPipe)
+import XMonad.Prompt
 import XMonad.Util.EZConfig(additionalKeys)
 import qualified XMonad.StackSet as W
 import qualified Data.Map        as M
@@ -25,15 +28,13 @@ import qualified Data.Map        as M
 -- The preferred terminal program, which is used in a binding below and by
 -- certain contrib modules.
 --
-myTerminal = "/usr/bin/gnome-terminal"
-
+myTerminal = "/usr/bin/xterm"
 
 ------------------------------------------------------------------------
 -- Workspaces
 -- The default number of workspaces (virtual screens) and their names.
 --
 myWorkspaces = ["1:term","2:web","3:code","4:vm","5:media"] ++ map show [6..9]
-
 
 ------------------------------------------------------------------------
 -- Window rules
@@ -61,6 +62,7 @@ myManageHook = composeAll
     , className =? "VirtualBox"     --> doShift "4:vm"
     , className =? "Xchat"          --> doShift "5:media"
     , className =? "stalonetray"    --> doIgnore
+
     , isFullscreen --> (doF W.focusDown <+> doFullFloat)]
 
 
@@ -320,8 +322,24 @@ myMouseBindings (XConfig {XMonad.modMask = modMask}) = M.fromList $
 -- with mod-q.  Used by, e.g., XMonad.Layout.PerWorkspace to initialize
 -- per-workspace layout choices.
 --
--- By default, do nothing.
-myStartupHook = return ()
+-- Run or raise windows already running.
+myStartupHook :: X()
+myStartupHook = do
+	runOrRaise "firefox" (className =? "Firefox")
+	runOrRaise "chrome" (className =? "Google-chrome")
+	runOrRaise "chromium" (className =? "Chromium")
+
+
+------------------------------------------------------------------------
+-- Compositing helpers
+--
+-- Set opacity when windows loose focus.
+-- https://bbs.archlinux.org/viewtopic.php?id=69834
+setOpacity :: Window -> Integer -> X ()
+setOpacity w t = withDisplay $ \dpy -> do
+    a <- getAtom "_NET_WM_WINDOW_OPACITY"
+    c <- getAtom "CARDINAL"
+    io $ changeProperty32 dpy w a c propModeReplace [fromIntegral t]
 
 
 ------------------------------------------------------------------------
